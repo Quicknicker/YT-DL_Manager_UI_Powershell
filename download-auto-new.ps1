@@ -1,4 +1,4 @@
-﻿#v04122020
+﻿#v18122020
 #NB
 
 $youtube_dl_location = "D:\Desktop\Youtube-dl\youtube-dl.exe"
@@ -86,9 +86,8 @@ Add-Type @"
   }
 "@
 
-# process
 
-
+# URL
 $Geturl = {
     # Get-URL
     $promptURL = Read-Host -Prompt 'Enter URL or type "C"'
@@ -111,6 +110,7 @@ $Geturl = {
     }
 }
 
+# process
 $download = {
     cls
 
@@ -120,11 +120,11 @@ $download = {
 
     
 
-    # Type
+    # type
     Write-Host 'Video / Audio'
     $type = Read-Host -Prompt 'Choose a type'
 
-    # Subtitles / VQuality
+    # subtitles / vQuality
     $vBoth = 1
     if (($type -eq 'Video') -or ($type -eq 'V'))
     {
@@ -153,7 +153,7 @@ $download = {
 
     
 
-    # Download
+    # download
     if ((($type -eq 'Video') -or ($type -eq 'V')) -and (($sub -eq 'n') -or ($sub -eq '')))
     {
 
@@ -161,7 +161,6 @@ $download = {
         {
             $fquality = "bestvideo+bestaudio"
             $b = "_b"
-            #Write-Host "test1    $vBoth"
         }
 
         for ($i = 0; $i -lt $vBoth; $i++)
@@ -174,7 +173,6 @@ $download = {
                 $b = ""
                 $cmd_process = (Get-Process youtube-dl).Id
                 Wait-Process $cmd_process
-                #Write-Host "test2    $vBoth"
             }
         }
         if ($vBoth -eq 2)
@@ -261,18 +259,20 @@ $download = {
     Write-Host ''
 
     
-        # Add another URL
-
+        
+        # hide toggle
         $pwsh_process = (Get-Process powershell) | Sort-Object StartTime | Select-Object -First 1
         $ytdl_process = (Get-Process youtube-dl) | Sort-Object StartTime | Select-Object -First 1
         $pwsh_process | Set-WindowState -State HIDE
         $ytdl_process | Set-WindowState -State HIDE
 
+        # append log
+        $title = [System.IO.Path]::GetFileNameWithoutExtension("$dir\$((Get-ChildItem $dir) | Sort-Object CreationTime -Descending | Select-Object -First 1).Name")
+        Add-Content $logdir -Value "$(Get-Date -Format "MM/dd/yyyy HH:mm")      $title"
         
+        # add another URL
         $result = "Proceed", "Add URL" | Out-GridView -PassThru -Title "Choose option"
-        #$grid_process = (Get-Process powershell | Sort-Object StartTime -ErrorAction SilentlyContinue)
-        #$grid_process = ($grid_process | Select-Object -First 1).MainWindowHandle
-        #[Tricks]::SetForegroundWindow($grid_process)
+        
         if ($result -eq 'Add URL')
         {
             $pwsh_process | Set-WindowState -State SHOW
@@ -288,12 +288,10 @@ $download = {
         Wait-Process $cmd_process
         }
 
+        # hide toggle
         $pwsh_process | Set-WindowState -State SHOW
 
-        #append log
-        $title = [System.IO.Path]::GetFileNameWithoutExtension("$dir\$((Get-ChildItem $dir) | Sort-Object CreationTime -Descending | Select-Object -First 1).Name")
-        Add-Content $logdir -Value "$(Get-Date -Format "MM/dd/yyyy HH:mm")      $title"
-        
+        # finish
         cls
         Write-Host 'Finished'
         Read-Host "Press enter to exit..."
@@ -303,4 +301,5 @@ $download = {
     
 }
 
+# run
 &$download
