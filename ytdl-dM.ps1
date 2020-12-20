@@ -1,8 +1,9 @@
-﻿#v18122020
+﻿#v19122020
 #NB
 
-$youtube_dl_location = "D:\Desktop\Youtube-dl\youtube-dl.exe"
-$ffmpeg_location = "D:\Desktop\Youtube-dl\ffmpeg\bin"
+$ytdl_dir = "D:\Desktop\PowerShell-scripts\Youtube-dl"
+$youtube_dl_location = "$ytdl_dir\youtube-dl.exe"
+$ffmpeg_location = "$ytdl_dir\ffmpeg\bin"
 $dir = "D:\Music\Lieder\Download"
 $url = ""
 $logdir = "$dir\download-log.txt"
@@ -97,7 +98,7 @@ $Geturl = {
     }
     else
     {
-        if ($promptURL -match "/")
+        if (($promptURL -match "/") -or ($promptURL -match "."))
         {
             $url = $promptURL
         }
