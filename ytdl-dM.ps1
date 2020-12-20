@@ -1,16 +1,20 @@
-﻿#v19122020
+﻿#v20122020
 #NB
 
-$ytdl_dir = "D:\Desktop\PowerShell-scripts\Youtube-dl"
+$ytdl_dir = ""                                          # write YouTube-dl location here
 $youtube_dl_location = "$ytdl_dir\youtube-dl.exe"
-$ffmpeg_location = "$ytdl_dir\ffmpeg\bin"
-$dir = "D:\Music\Lieder\Download"
-$url = ""
-$logdir = "$dir\download-log.txt"
+$ffmpeg_location = "$ytdl_dir\ffmpeg\bin"               # change ffmpeg location if needed
+$dir = ""                                               # write target location here
+$logdir = "$dir\download-log.txt"                       # change log location if needed
+$isLogging = $true                                      # toggle logging
 
-[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
+
+$url = ""
+
 
 # functions
+
+[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
 
 function Set-WindowState {
 	<#
@@ -90,7 +94,6 @@ Add-Type @"
 
 # URL
 $Geturl = {
-    # Get-URL
     $promptURL = Read-Host -Prompt 'Enter URL or type "C"'
     if ($promptURL -eq 'C')
     {
@@ -119,38 +122,49 @@ $download = {
 
     .$Geturl
 
-    
 
-    # type
-    Write-Host 'Video / Audio'
-    $type = Read-Host -Prompt 'Choose a type'
+        # type
+        Write-Host 'Video / Audio'
+        $type = Read-Host -Prompt 'Choose a type'
 
-    # subtitles / vQuality
-    $vBoth = 1
-    if (($type -eq 'Video') -or ($type -eq 'V'))
-    {
-        Write-Host 'Y / N'
-        $sub = Read-Host -Prompt 'Subtitle?'
-
-        Write-Host ''
-
-        Write-Host 'high / best / both'
-        $vquality = Read-Host -Prompt 'Videoquality?'
-
-        if (($vquality -eq 'high') -or ($vquality -eq 'h') -or ($vquality -eq ''))
+        # subtitles / vQuality
+        $vBoth = 1
+        if (($type -eq 'Video') -or ($type -eq 'V'))
         {
-            $fquality = "bestvideo+best"
+            Write-Host 'Y / N'
+            $sub = Read-Host -Prompt 'Subtitle?'
+
+            Write-Host ''
+
+            Write-Host 'high / best / both'
+            $vquality = Read-Host -Prompt 'Videoquality?'
+
+            if (($vquality -eq 'high') -or ($vquality -eq 'h') -or ($vquality -eq ''))
+            {
+                $fquality = "bestvideo+best"
+            }
+            elseif (($vquality -eq 'best') -or ($vquality -eq 'b'))
+            {
+                $fquality = "bestvideo+bestaudio"
+                $b = "_b"
+            }
+            elseif (($vquality -eq 'both') -or ($vquality -eq 'bo'))
+            {
+                $vBoth = 2
+            }
+            else
+            {
+                Write-Host "Problem with Userinput..."
+                Start-Sleep -Seconds 2
+                exit
+            }
         }
-        elseif (($vquality -eq 'best') -or ($vquality -eq 'b'))
+        else
         {
-            $fquality = "bestvideo+bestaudio"
-            $b = "_b"
+            Write-Host "Problem with Userinput..."
+            Start-Sleep -Seconds 2
+            exit
         }
-        elseif (($vquality -eq 'both') -or ($vquality -eq 'bo'))
-        {
-            $vBoth = 2
-        }
-    }
 
     
 
@@ -268,8 +282,18 @@ $download = {
         $ytdl_process | Set-WindowState -State HIDE
 
         # append log
-        $title = [System.IO.Path]::GetFileNameWithoutExtension("$dir\$((Get-ChildItem $dir) | Sort-Object CreationTime -Descending | Select-Object -First 1).Name")
-        Add-Content $logdir -Value "$(Get-Date -Format "MM/dd/yyyy HH:mm")      $title"
+        $cmd_process = (Get-Process youtube-dl -erroraction 'silentlycontinue').id
+
+        if ($cmd_process -ne $null -and $cmd_process -ne 0)
+        {
+        Wait-Process $cmd_process
+        }
+
+        if ($isLogging -eq $true)
+        {
+            $title = [System.IO.Path]::GetFileNameWithoutExtension("$dir\$((Get-ChildItem $dir) | Sort-Object CreationTime -Descending | Select-Object -First 1).Name")
+            Add-Content $logdir -Value "$(Get-Date -Format "MM/dd/yyyy HH:mm")      $title"
+        }
         
         # add another URL
         $result = "Proceed", "Add URL" | Out-GridView -PassThru -Title "Choose option"
