@@ -1,4 +1,6 @@
-﻿#v27122020
+#Caution! This file is more vulnerable to errors than the stable version.
+ 
+#v27122020
 #NB
 
 $ytdl_dir = ""                                          # write YouTube-dl location here
