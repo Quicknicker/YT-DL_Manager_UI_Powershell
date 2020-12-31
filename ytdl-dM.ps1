@@ -1,4 +1,4 @@
-﻿#v20122020
+﻿#v31122020
 #NB
 
 $ytdl_dir = ""                                          # write YouTube-dl location here
@@ -7,14 +7,59 @@ $ffmpeg_location = "$ytdl_dir\ffmpeg\bin"               # change ffmpeg location
 $dir = ""                                               # write target location here
 $logdir = "$dir\download-log.txt"                       # change log location if needed
 $isLogging = $true                                      # toggle logging
+$ytAPIkey = ""                                          # write your API-Key here (see description)
 
 
 $url = ""
+$errorCount = 0
 
 
 # functions
 
 [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
+
+
+function Get-VideoInfo {
+    param(
+        [Parameter(Mandatory = $True)]
+        [string]$videoURL,
+
+        [Parameter(Mandatory = $True)]
+        [ValidateSet('title', 'duration')]
+        [string]$infoType
+    )
+
+    $regex = '[^ ]*v='
+    $videoID = $videoURL -replace $regex
+    $regex = '&t[^ ]*'
+    $videoID = $videoID -replace $regex
+    if ($infoType -eq 'duration')
+    {
+        $metadata = irm "https://www.googleapis.com/youtube/v3/videos?id=$videoID&key=$ytAPIkey&part=contentDetails"
+        $videoDuration = $metadata.items.contentDetails.duration
+
+        $regex = '(^[A-Z]*)'
+        $videoDuration = $videoDuration -replace $regex
+
+        $regex = 'M[^ ]*'
+        $videoM = $videoDuration -replace $regex
+        [int]$videoM *= 60
+
+        $regex = '[^ ]*M'
+        $videoS = $videoDuration -replace $regex
+        $regex = 'S[^ ]*'
+        $videoS = $videoS -replace $regex
+
+        [int]$videoInfo = $videoM + $videoS
+
+    } elseif ($infoType -eq 'title')
+    {
+        $metadata = irm "https://www.googleapis.com/youtube/v3/videos?id=$videoID&key=AIzaSyA0efdXk-WaYhGSefbAMxU2VZjcLnsv8w4&part=snippet"
+        $videoInfo = $metadata.items.snippet.title
+    }
+    
+    $videoInfo
+}
 
 function Set-WindowState {
 	<#
@@ -81,23 +126,22 @@ public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
 	}
 }
 
-Add-Type @"
-  using System;
-  using System.Runtime.InteropServices;
-  public class Tricks {
-     [DllImport("user32.dll")]
-     [return: MarshalAs(UnmanagedType.Bool)]
-     public static extern bool SetForegroundWindow(IntPtr hWnd);
-  }
-"@
-
 
 # URL
 $Geturl = {
     $promptURL = Read-Host -Prompt 'Enter URL or type "C"'
     if ($promptURL -eq 'C')
     {
-        $url = Get-Clipboard
+        if ((Get-Clipboard) -eq $null)
+        {
+            Write-Host "Problem with Userinput..."
+            Start-Sleep -Seconds 2
+            exit
+        }
+        else
+        {
+            $url = Get-Clipboard
+        }
     }
     else
     {
@@ -112,6 +156,10 @@ $Geturl = {
             .$Geturl
         }
     }
+
+    # delete timecode
+    $regex = '&t[^ ]*'
+    $url = $url -replace $regex
 }
 
 # process
@@ -136,7 +184,7 @@ $download = {
 
             Write-Host ''
 
-            Write-Host 'high / best / both'
+            Write-Host 'high / best / both (bo)'
             $vquality = Read-Host -Prompt 'Videoquality?'
 
             if (($vquality -eq 'high') -or ($vquality -eq 'h') -or ($vquality -eq ''))
@@ -161,14 +209,19 @@ $download = {
         }
         else
         {
-            Write-Host "Problem with Userinput..."
-            Start-Sleep -Seconds 2
-            exit
+            if (($type -ne 'Audio') -and ($type -ne 'A'))
+            {
+                Write-Host "Problem with Userinput..."
+                Start-Sleep -Seconds 2
+                exit
+            }
         }
 
     
 
     # download
+    #$ErrorActionPreference = "SilentlyContinue"
+
     if ((($type -eq 'Video') -or ($type -eq 'V')) -and (($sub -eq 'n') -or ($sub -eq '')))
     {
 
@@ -192,9 +245,12 @@ $download = {
         }
         if ($vBoth -eq 2)
         {
-            $cmd_process = (Get-Process youtube-dl).Id
+
+            $ErrorActionPreference = 'Ignore'
+            $cmd_process = (Get-Process youtube-dl -ErrorAction Ignore).Id
             Wait-Process $cmd_process
             Start-Sleep -Seconds 1
+            $ErrorActionPreference = 'Continue'
         
             $title1 = ((Get-ChildItem $dir) | Sort-Object CreationTime -Descending | Select-Object -Skip 1 | Select-Object -First 1).Name
             $title2 = ((Get-ChildItem $dir) | Sort-Object CreationTime -Descending | Select-Object -First 1).Name
@@ -217,9 +273,11 @@ $download = {
         
         Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s.%(ext)s -f $fquality --ignore-config --hls-prefer-native --write-sub --ffmpeg-location $ffmpeg_location --merge-output-format mp4 $url")
         
-        $cmd_process = (Get-Process youtube-dl).Id
+        $ErrorActionPreference = 'Ignore'
+        $cmd_process = (Get-Process youtube-dl -ErrorAction Ignore).Id
         Wait-Process $cmd_process
         Start-Sleep -Seconds 1
+        $ErrorActionPreference = 'Continue'
         
         $title1 = ((Get-ChildItem $dir) | Sort-Object CreationTime -Descending | Select-Object -Skip 1 | Select-Object -First 1).Name
         $title2 = ((Get-ChildItem $dir) | Sort-Object CreationTime -Descending | Select-Object -First 1).Name
@@ -230,7 +288,7 @@ $download = {
     }
     elseif (($type -eq 'Audio') -or ($type -eq 'A'))
     {
-        Write-Host 'opus / mp3 / both'
+        Write-Host 'opus / mp3 / both (b)'
         $quality = Read-Host -Prompt 'Choose a quality'
 
         Write-Host 'Starting Youtube-dl...'
@@ -250,7 +308,7 @@ $download = {
             Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s.%(ext)s -x --audio-format best --audio-quality 0 --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location $url")
 
             Start-Sleep -Seconds 1
-            $cmd_process = (Get-Process youtube-dl).Id | Out-Null
+            $cmd_process = (Get-Process youtube-dl).Id
             Wait-Process $cmd_process
             Start-Sleep -Seconds 3
         
@@ -264,64 +322,103 @@ $download = {
         else
         {
             Write-Host 'Thats not a valid quality'
+            $errorCount += 1
         }
     }
     else
     {
         Write-Host 'Thats not a valid filetype'
+        $errorCount += 1
     }
 
     Write-Host ''
 
     
         
-        # hide toggle
-        $pwsh_process = (Get-Process powershell) | Sort-Object StartTime | Select-Object -First 1
-        $ytdl_process = (Get-Process youtube-dl) | Sort-Object StartTime | Select-Object -First 1
-        $pwsh_process | Set-WindowState -State HIDE
-        $ytdl_process | Set-WindowState -State HIDE
+    # hide toggle
+    $ErrorActionPreference = 'Ignore'
+    $pwsh_process = (Get-Process powershell) | Sort-Object StartTime | Select-Object -First 1
+    $ytdl_process = (Get-Process youtube-dl) | Sort-Object StartTime | Select-Object -First 1
+    $pwsh_process | Set-WindowState -State HIDE
+    $ytdl_process | Set-WindowState -State HIDE
+    $ErrorActionPreference = 'Continue'
 
-        # append log
-        $cmd_process = (Get-Process youtube-dl -erroraction 'silentlycontinue').id
+    # append log
+    if (($isLogging -eq $true) <#-and ($Error.Count -eq 0)#> -and ($errorCount -eq 0))
+    {
+        
 
-        if ($cmd_process -ne $null -and $cmd_process -ne 0)
+        # create log at first launch
+        if (-not [System.IO.File]::Exists($logdir))
         {
-        Wait-Process $cmd_process
+            New-Item -Path "$logdir" -ItemType File
         }
 
-        if ($isLogging -eq $true)
+        # append new file to log
+        if ((Get-VideoInfo -videoURL $url -infoType duration) -gt 3600)
+        {
+            $addon = '      time can differ'
+        }
+
+        # get title of video
+        if ($vBoth -eq 2 -or $sub -eq 'y' -or $quality -eq 'b')
         {
             $title = [System.IO.Path]::GetFileNameWithoutExtension("$dir\$((Get-ChildItem $dir) | Sort-Object CreationTime -Descending | Select-Object -First 1).Name")
-            Add-Content $logdir -Value "$(Get-Date -Format "MM/dd/yyyy HH:mm")      $title"
-        }
-        
-        # add another URL
-        $result = "Proceed", "Add URL" | Out-GridView -PassThru -Title "Choose option"
-        
-        if ($result -eq 'Add URL')
+        } else
         {
-            $pwsh_process | Set-WindowState -State SHOW
-            &$download
+            $title = Get-VideoInfo -videoURL $url -infoType title
+            if ($type -eq 'V' -or $type -eq 'Video')
+            {
+                $title = $title + '.mp4'
+            } elseif ((($type -eq 'Audio') -or ($type -eq 'A')) -and ($quality -eq 'mp3' -or $quality -eq 'm'))
+            {
+                $title = $title + '.mp3'
+            } elseif ((($type -eq 'Audio') -or ($type -eq 'A')) -and ($quality -eq 'opus' -or $quality -eq 'o'))
+            {
+                $title = $title + '.opus'
+            }
         }
-    
-        $ytdl_process | Set-WindowState -State SHOW
+        Add-Content $logdir -Value "$(Get-Date -Format "MM/dd/yyyy HH:mm")      $title$addon"
+    }
         
+    # add another URL
+    if ($vBoth -eq 2 -or $sub -eq 'y' -or $quality -eq 'b')
+    {
+        # wait until download finished
         $cmd_process = (Get-Process youtube-dl -erroraction 'silentlycontinue').id
-        
+
         if ($cmd_process -ne $null -and $cmd_process -ne 0)
         {
-        Wait-Process $cmd_process
+            Wait-Process $cmd_process
         }
+    }
 
-        # hide toggle
-        $pwsh_process | Set-WindowState -State SHOW
-
-        # finish
-        cls
-        Write-Host 'Finished'
-        Read-Host "Press enter to exit..."
+    $result = "Proceed", "Add URL" | Out-GridView -PassThru -Title "Choose option"
         
-        exit
+    if ($result -eq 'Add URL')
+    {
+        $pwsh_process | Set-WindowState -State SHOW
+        &$download
+    }
+    
+    # hide toggle
+    $ytdl_process | Set-WindowState -State SHOW
+        
+    $cmd_process = (Get-Process youtube-dl -erroraction 'silentlycontinue').id
+        
+    if ($cmd_process -ne $null -and $cmd_process -ne 0)
+    {
+    Wait-Process $cmd_process
+    }
+
+    $pwsh_process | Set-WindowState -State SHOW
+
+    # finish
+    cls
+    Write-Host 'Finished'
+    Read-Host "Press enter to exit..."
+        
+    exit
 
     
 }
