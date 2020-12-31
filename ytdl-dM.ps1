@@ -1,5 +1,5 @@
 ﻿#v31122020
-#NB
+#NB (https://github.com/Quicknicker/YT-DL_Manager_Powershell)
 
 $ytdl_dir = ""                                          # write YouTube-dl location here
 $youtube_dl_location = "$ytdl_dir\youtube-dl.exe"
