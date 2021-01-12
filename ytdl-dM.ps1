@@ -1,5 +1,5 @@
-﻿#v31122020
-#NB (https://github.com/Quicknicker/YT-DL_Manager_Powershell)
+﻿#v12012021
+#NB
 
 $ytdl_dir = ""                                          # write YouTube-dl location here
 $youtube_dl_location = "$ytdl_dir\youtube-dl.exe"
@@ -25,7 +25,7 @@ function Get-VideoInfo {
         [string]$videoURL,
 
         [Parameter(Mandatory = $True)]
-        [ValidateSet('title', 'duration')]
+        [ValidateSet('title', 'duration', 'id', 'etag')]
         [string]$infoType
     )
 
@@ -33,9 +33,9 @@ function Get-VideoInfo {
     $videoID = $videoURL -replace $regex
     $regex = '&t[^ ]*'
     $videoID = $videoID -replace $regex
+    $metadata = irm "https://www.googleapis.com/youtube/v3/videos?id=$videoID&key=$ytAPIkey&part=snippet&part=contentDetails"
     if ($infoType -eq 'duration')
     {
-        $metadata = irm "https://www.googleapis.com/youtube/v3/videos?id=$videoID&key=$ytAPIkey&part=contentDetails"
         $videoDuration = $metadata.items.contentDetails.duration
 
         $regex = '(^[A-Z]*)'
@@ -54,8 +54,13 @@ function Get-VideoInfo {
 
     } elseif ($infoType -eq 'title')
     {
-        $metadata = irm "https://www.googleapis.com/youtube/v3/videos?id=$videoID&key=AIzaSyA0efdXk-WaYhGSefbAMxU2VZjcLnsv8w4&part=snippet"
         $videoInfo = $metadata.items.snippet.title
+    } elseif ($infoType -eq 'id')
+    {
+        $videoInfo = $metadata.items.id
+    } elseif ($infoType -eq 'etag')
+    {
+        $videoInfo = $metadata.etag
     }
     
     $videoInfo
@@ -367,6 +372,8 @@ $download = {
         } else
         {
             $title = Get-VideoInfo -videoURL $url -infoType title
+            $videoID = Get-VideoInfo -videoUrl $url -infoType id
+            $videoEtag = Get-VideoInfo -videoUrl $url -infoType etag
             if ($type -eq 'V' -or $type -eq 'Video')
             {
                 $title = $title + '.mp4'
@@ -378,7 +385,7 @@ $download = {
                 $title = $title + '.opus'
             }
         }
-        Add-Content $logdir -Value "$(Get-Date -Format "MM/dd/yyyy HH:mm")      $title$addon"
+        Add-Content $logdir -Value "$(Get-Date -Format "MM/dd/yyyy HH:mm")      $title$addon              Id= $videoID; Etag= $videoEtag"
     }
         
     # add another URL
