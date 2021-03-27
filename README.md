@@ -1,4 +1,4 @@
-# YT-DL_Manager_Powershell
+# YT-DL_Manager_UI_Powershell
 This is a PowerShell-Script that downloads videos by using Youtube-DL.
 
 
