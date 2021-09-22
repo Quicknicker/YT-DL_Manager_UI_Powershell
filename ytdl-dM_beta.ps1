@@ -1,6 +1,6 @@
 #Caution! This file is more vulnerable to errors than the stable version.
 
-#v21092021
+#v22092021
 #NB
 
 $ytdl_dir = ""                                          # write YouTube-dl location here
@@ -52,19 +52,28 @@ function Get-VideoInfo {
 
             $regex = 'H[^ ]*'
             $videoM = $videoDuration -replace $regex
-            [int]$videoM *= 60
+            if ($videoM -ne $videoDuration)
+            {
+                [int]$videoM *= 60
+            }
 
             $regex = 'M[^ ]*'
             $videoM2 = $videoDuration -replace $regex
             $regex = '[^ ]*H'
-            $videoM += $videoM2 -replace $regex
+            if ($videoM -ne $videoDuration)
+            {
+                $videoM += $videoM2 -replace $regex
+            } else
+            {
+                $videoM = $videoM2
+            }
 
             $regex = '[^ ]*M'
             $videoS = $videoDuration -replace $regex
             $regex = 'S[^ ]*'
             $videoS = $videoS -replace $regex
 
-            $videoInfo = $videoM*60 + $videoS
+            $videoInfo = [int]$videoM*60 + $videoS
 
         } elseif ($infoType -eq 'title')
         {
@@ -231,7 +240,7 @@ $Geturl = {
     $promptURL = Read-Host -Prompt 'Enter URL or type "C"'
     if (($promptURL -eq 'C') -or $promptURL -eq '')
     {
-        if ((Get-Clipboard) -eq $null)
+        if ((Get-Clipboard) -eq $null -or (Get-Clipboard) -eq "")
         {
             Write-Host "Problem with Userinput..."
             Start-Sleep -Seconds 2
@@ -270,52 +279,98 @@ $download = {
     .$Geturl
 
 
-        # type
-        Write-Host 'Video / Audio'
-        $type = Read-Host -Prompt 'Choose a type'
+    # type
+    Write-Host 'Video / Audio'
+    $type = Read-Host -Prompt 'Choose a type'
 
-        # subtitles / vQuality
-        $vBoth = 1
-        if (($type -eq 'Video') -or ($type -eq 'V') -or ($type -eq ''))
+    # subtitles / vQuality
+    $vBoth = 1
+    if (($type -eq 'Video') -or ($type -eq 'V') -or ($type -eq ''))
+    {
+        Write-Host 'Y / N'
+        $sub = Read-Host -Prompt 'Subtitle?'
+
+        Write-Host ''
+
+        Write-Host 'high / best / both (bo)'
+        $vquality = Read-Host -Prompt 'Videoquality?'
+
+        if (($vquality -eq 'high') -or ($vquality -eq 'h') -or ($vquality -eq ''))
         {
-            Write-Host 'Y / N'
-            $sub = Read-Host -Prompt 'Subtitle?'
-
-            Write-Host ''
-
-            Write-Host 'high / best / both (bo)'
-            $vquality = Read-Host -Prompt 'Videoquality?'
-
-            if (($vquality -eq 'high') -or ($vquality -eq 'h') -or ($vquality -eq ''))
-            {
-                $fquality = "bestvideo+best"
-            }
-            elseif (($vquality -eq 'best') -or ($vquality -eq 'b'))
-            {
-                $fquality = "bestvideo+bestaudio"
-                $b = "_b"
-            }
-            elseif (($vquality -eq 'both') -or ($vquality -eq 'bo'))
-            {
-                $vBoth = 2
-            }
-            else
-            {
-                Write-Host "Problem with Userinput..."
-                Start-Sleep -Seconds 2
-                exit
-            }
+            $fquality = "bestvideo+best"
+        }
+        elseif (($vquality -eq 'best') -or ($vquality -eq 'b'))
+        {
+            $fquality = "bestvideo+bestaudio"
+            $b = "_b"
+        }
+        elseif (($vquality -eq 'both') -or ($vquality -eq 'bo'))
+        {
+            $vBoth = 2
         }
         else
         {
-            if (($type -ne 'Audio') -and ($type -ne 'A'))
-            {
-                Write-Host "Problem with Userinput..."
-                Start-Sleep -Seconds 2
-                exit
-            }
+            Write-Host "Problem with Userinput..."
+            Start-Sleep -Seconds 2
+            exit
         }
+    }
+    else
+    {
+        if (($type -ne 'Audio') -and ($type -ne 'A'))
+        {
+            Write-Host "Problem with Userinput..."
+            Start-Sleep -Seconds 2
+            exit
+        } else
+        {
+            Write-Host 'opus / mp3 / both (b)'
+            $quality = Read-Host -Prompt 'Choose a quality'
+        }
+    }
 
+    # check for double
+    $fileTitle = Get-VideoInfo -videoUrl $url -infoType title
+    if ($type -eq 'V' -or $type -eq 'Video' -or $type -eq '')
+    {
+        $fileTitle += '.mp4'
+    } elseif ((($type -eq 'Audio') -or ($type -eq 'A')) -and ($quality -eq 'mp3' -or $quality -eq 'm' -or $quality -eq ''))
+    {
+        $fileTitle += '.mp3'
+    } elseif ((($type -eq 'Audio') -or ($type -eq 'A')) -and ($quality -eq 'opus' -or $quality -eq 'o'))
+    {
+        $fileTitle += '.opus'
+    }
+    <#$ErrorActionPreference = 'Ignore'
+    $cmd_process = (Get-Process youtube-dl).Id | Out-Null
+    Wait-Process $cmd_process | Out-Null
+    $ErrorActionPreference = 'Continue'#>
+
+    #[System.Windows.Forms.MessageBox]::Show("$dir\$fileTitle","Error",0) | Out-Null
+
+    $number = ''
+    $ErrorActionPreference = 'SilentlyContinue'
+    if ([System.IO.File]::Exists("$dir\$fileTitle") -or (Get-Process youtube-dl -ErrorAction SilentlyContinue) -ne $null)
+    {
+        $ErrorActionPreference = 'Continue'
+
+        #[System.Windows.Forms.MessageBox]::Show("TEST001","Error",0) | Out-Null
+
+        #$fileTitle += '_'
+        $_fileTitle = $fileTitle
+        $number = 0
+        while ([System.IO.File]::Exists("$dir\$_fileTitle"))
+        {
+            #[System.Windows.Forms.MessageBox]::Show("TEST002","Error",0) | Out-Null
+            $_fileTitle = $fileTitle + [String]$number
+            $number++
+        }
+        <#$fileTitle += $number
+        Rename-Item -Path "$dir\$fileTitle" -NewName "$(fileTitle)_$number"
+        #--------------------------------------------------------------------------------------------------------------------------------------- READ-HOST Line334
+        Read-host '10sek to rename file with same name'
+        Start-Sleep -Seconds 10#>
+    }
     
 
     # download
@@ -333,7 +388,7 @@ $download = {
         for ($i = 0; $i -lt $vBoth; $i++)
         {
             Write-Host 'Starting Youtube-dl...'
-            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s$b.%(ext)s -f $fquality --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location --merge-output-format mp4 $url")
+            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s$b$number.%(ext)s -f $fquality --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location --merge-output-format mp4 $url")
             if ($vBoth -eq 2)
             {
                 $fquality = "bestvideo+best"
@@ -370,7 +425,7 @@ $download = {
 
         Write-Host 'Starting Youtube-dl...'
         
-        Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s.%(ext)s -f $fquality --ignore-config --hls-prefer-native --write-sub --ffmpeg-location $ffmpeg_location --merge-output-format mp4 $url")
+        Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s$number.%(ext)s -f $fquality --ignore-config --hls-prefer-native --write-sub --ffmpeg-location $ffmpeg_location --merge-output-format mp4 $url")
         
         $ErrorActionPreference = 'Ignore'
         $cmd_process = (Get-Process youtube-dl -ErrorAction Ignore).Id
@@ -387,24 +442,24 @@ $download = {
     }
     elseif (($type -eq 'Audio') -or ($type -eq 'A'))
     {
-        Write-Host 'opus / mp3 / both (b)'
-        $quality = Read-Host -Prompt 'Choose a quality'
+        <#Write-Host 'opus / mp3 / both (b)'
+        $quality = Read-Host -Prompt 'Choose a quality'#>
 
         Write-Host 'Starting Youtube-dl...'
         if (($quality -eq 'opus') -or ($quality -eq 'o'))
         {
-            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s.%(ext)s -x --audio-format best --audio-quality 0 --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location $url")
+            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s$number.%(ext)s -x --audio-format best --audio-quality 0 --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location $url")
         }
         elseif (($quality -eq 'mp3') -or ($quality -eq 'm') -or ($quality -eq ''))
         {
-            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s.%(ext)s -x --audio-format mp3 --audio-quality 0 --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location $url")
+            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s$number.%(ext)s -x --audio-format mp3 --audio-quality 0 --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location $url")
         }
         elseif (($quality -eq 'both') -or ($quality -eq 'b'))
         {
-            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s.%(ext)s -x --audio-format mp3 --audio-quality 0 --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location $url")
+            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s$number.%(ext)s -x --audio-format mp3 --audio-quality 0 --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location $url")
             $cmd_process = (Get-Process youtube-dl).Id
             Wait-Process $cmd_process
-            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s.%(ext)s -x --audio-format best --audio-quality 0 --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location $url")
+            Start-Process $youtube_dl_location -ArgumentList ("-o $dir\%(title)s$number.%(ext)s -x --audio-format best --audio-quality 0 --ignore-config --hls-prefer-native --ffmpeg-location $ffmpeg_location $url")
 
             Start-Sleep -Seconds 1
             $cmd_process = (Get-Process youtube-dl).Id
@@ -495,10 +550,10 @@ $download = {
                 $title = Get-VideoInfo -videoUrl $url -infoType title
                 $videoID = Get-VideoInfo -videoUrl $url -infoType id
                 $videoEtag = Get-VideoInfo -videoUrl $url -infoType etag
-                if ($type -eq 'V' -or $type -eq 'Video')
+                if ($type -eq 'V' -or $type -eq 'Video' -or $type -eq '')
                 {
                     $title = $title + '.mp4'
-                } elseif ((($type -eq 'Audio') -or ($type -eq 'A')) -and ($quality -eq 'mp3' -or $quality -eq 'm'))
+                } elseif ((($type -eq 'Audio') -or ($type -eq 'A')) -and ($quality -eq 'mp3' -or $quality -eq 'm' -or $quality -eq ''))
                 {
                     $title = $title + '.mp3'
                 } elseif ((($type -eq 'Audio') -or ($type -eq 'A')) -and ($quality -eq 'opus' -or $quality -eq 'o'))
