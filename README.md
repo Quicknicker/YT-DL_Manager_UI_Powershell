@@ -11,6 +11,7 @@ Optional the ffmpeg location can be changed if not in same directory as the YouT
 # Beta version
 Caution! The beta version is more vulnerable to errors than the stable version.
 Has newer features like playlist-support, more detailed logs or verbose logs (WIP).
+Furthermore the beta supports the download of multiple videos with the same title.
 
 # Create a API-Key for YouTube
 1. go to https://console.developers.google.com/apis/api/youtube.googleapis.com/
