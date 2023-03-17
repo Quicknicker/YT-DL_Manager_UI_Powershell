@@ -1,10 +1,10 @@
 # YT-DL_Manager_UI_Powershell
-This is a PowerShell-Script that downloads videos by using Youtube-DL.
+This is a PowerShell-Script that downloads videos using Youtube-DL.
 
 
 
 # Change of directories
-Specifying of YouTube-dl location and download target directory is needed.
+Specification of YouTube-dl location and download target directory is needed.
 
 Optional the ffmpeg location can be changed if not in same directory as the YouTube-dl.exe and the targeted location for logs can be changed or completely deactivated. (standart is the selected download folder)
 
